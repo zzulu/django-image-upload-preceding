@@ -1,0 +1,7 @@
+<h1>Post Delete</h1>
+
+<form method="post">
+    {% csrf_token %}
+    <p>{{ post.pk }}번, 정말 삭제하시겠습니까?</p>
+    <input type="submit" value="Confirm"/>
+</form>

@@ -223,13 +223,15 @@ urlpatterns = [
 ```python
 from django.urls import path
 
+app_name = 'posts'
+
 urlpatterns = [
 
 ]
 ```
 
 
-## [C]RUD
+## CRUD
 
 ### posts/views.py
 
@@ -322,6 +324,186 @@ git commit -m "Add basic image uplaod"
 ### push
 
 - 처음 할 때, `-u` 옵션으로 upstream 설정을 했기때문에 앞으로는 `git push`만 해줘도 된다.
+
+```bash
+git push
+```
+
+
+## [C]RUD
+
+New 페이지 & Create 로직을 만들자.
+
+### posts/views.py
+
+```python
+from django.views.generic import ListView, CreateView
+
+
+class PostCreate(CreateView):
+    model = Post
+    fields = ['image','content',]
+```
+
+### posts/urls.py
+
+```python
+urlpatterns = [
+    ...
+    path('new', views.PostCreate.as_view(), name='create'),
+]
+```
+
+### posts/templates/posts/post_form.html
+
+- `enctype="multipart/form-data"` 이거 중요! 이미지 올릴때 추가해주어야 함!
+
+```
+<h1>Post Form</h1>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Submit"/>
+</form>
+```
+
+- 여기까지 해서 이미지 업로드해보면 `No URL to redirect to.` 에러가 나오는데, 이거는 우리가 아직 Detail 페이지가 없기도 하고 redirect URL을 아직 지정 안해줘서 그렇다! 그러나 `/posts`로 가보면 이미지는 잘 업로드 되었다.
+
+
+## C[R]UD
+
+Detail 페이지를 만들자.
+
+### posts/views.py
+
+```python
+from django.views.generic import ListView, CreateView, DetailView
+    
+
+class PostDetail(DetailView):
+    model = Post
+```
+
+### posts/urls.py
+
+```python
+urlpatterns = [
+    ...
+    path('<int:pk>/', views.PostDetail.as_view(), name='detail'),
+]
+```
+
+### posts/templates/posts/post_detail.html
+
+```
+<h1>Post Detail</h1>
+
+<div>
+    <img src="{{ post.image.url }}"></img>
+    <p>{{ post.content }}</p>
+</div>
+```
+
+### posts/models.py
+
+- Post 생성 후, Detail 페이지로 바로 오도록 하는 코드!
+
+```python
+from django.urls import reverse
+
+class Post(models.Model):
+    ...
+    
+    def get_absolute_url(self):
+        return reverse('posts:detail', kwargs={'pk': self.pk})
+```
+
+- `/posts/2` 처럼 Detail 페이지에 들어가 보면 페이지가 정상적으로 뜨고, 다시 한번 Create를 해보면 이제는 오류페이지가 아닌 Detail 페이지로 redirect 되는 것을 확인 할 수 있다.
+
+
+## CR[U]D
+
+Update를 해보자.
+
+### posts/views.py
+
+```python
+from django.views.generic import ListView, CreateView, DetailView, UpdateView
+
+class PostUpdate(UpdateView):
+    model = Post
+    fields = ['image','content',]
+```
+
+
+### posts/urls.py
+
+```python
+urlpatterns = [
+    ...
+    path('<int:pk>/edit/', views.PostUpdate.as_view(), name='update'),
+]
+```
+
+
+### posts/templates/posts/post_form.html
+
+- 수정할 것 없음!
+- 여기까지 작성하고 `/posts/2/edit/`로 들어가서 모든 것이 잘 동작하는지 확인해보자.
+- `models.py`에서 설정한 `ImageField`가 Image **Currently, Change**와 같이 현재 이미지 링크와 바꿀 이미지 폼을 함께 생성해 준다.
+
+
+## CRU[D]
+
+Delete를 해보자.
+
+### posts/views.py
+
+```python
+from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
+from django.urls import reverse_lazy
+
+
+class PostDelete(DeleteView):
+    model = Post
+    success_url = reverse_lazy('posts:list')
+```
+
+### posts/urls.py
+
+```python
+urlpatterns = [
+    ...
+    path('<int:pk>/delete/', views.PostDelete.as_view(), name='delete'),
+]
+```
+
+### posts/templates/posts/post_confirm_delete.html
+
+```
+<h1>Post Delete</h1>
+
+<form method="post">
+    {% csrf_token %}
+    <p>{{ post.pk }}번, 정말 삭제하시겠습니까?</p>
+    <input type="submit" value="Confirm"/>
+</form>
+```
+
+- 여기까지 작성하고 `/posts/2/delete/`로 들어가서 삭제가 잘 동작하는지 확인해보자.
+
+
+## Git Push Time #3
+
+### add & commit
+
+```bash
+git add .
+git commit -m "Add CRUD for Post"
+```
+
+### push
 
 ```bash
 git push
