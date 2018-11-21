@@ -1,9 +1,13 @@
 <h1>Post List</h1>
 
+<a href="{% url 'posts:create' %}">New Post</a>
+
 <ul>
 {% for post in post_list %}
     <li>
-        <img src="{{ post.image.url }}"></img>
+        <a href="{% url 'posts:detail' pk=post.pk %}">
+            <img src="{{ post.image.url }}"></img>
+        </a>
         <p>{{ post.content }}</p>
     </li>
 {% endfor %}

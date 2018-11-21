@@ -1,5 +1,8 @@
 <h1>Post Detail</h1>
 
+<a href="{% url 'posts:update' pk=post.pk %}">Edit</a>
+<a href="{% url 'posts:delete' pk=post.pk %}">Delete</a>
+
 <div>
     <img src="{{ post.image.url }}"></img>
     <p>{{ post.content }}</p>

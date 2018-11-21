@@ -49,7 +49,7 @@ pyenv local imageupload-venv
 ```
 터미널 앞쪽에 `(imageupload-venv)` 붙어있는지 확인!
 
-### pip 업데이트 & 장고 설치
+### pip 업데이트 & django 설치
 ```bash
 pip install --upgrade pip 
 pip install django
@@ -304,6 +304,7 @@ urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 - 설정 완료 후, `/admin` 페이지로 가서 다시 Post 하나 등록하고 `/posts`를 확인해보자.
 - 파일도 `media` 폴더에 잘 올라갔는지 확인!
+- '파일 이름이 겹치면 어떻게 하나요!'라고 걱정할 수 있는데, 겹치는 경우 django에서 랜덤 문자열을 뒤에 붙여서 겹치지 않게 해준다.
 
 
 ## Git Push Time #2
@@ -354,6 +355,8 @@ urlpatterns = [
 ]
 ```
 
+- 링크 생성 및 redirection을 편하게 할 수 있도록, name을 지정.
+
 ### posts/templates/posts/post_form.html
 
 - `enctype="multipart/form-data"` 이거 중요! 이미지 올릴때 추가해주어야 함!
@@ -366,6 +369,14 @@ urlpatterns = [
     {{ form.as_p }}
     <input type="submit" value="Submit"/>
 </form>
+```
+
+### posts/templates/posts/post_list.html
+
+- Post 작성 페이지로 편하게 가기 위하여 링크를 추가해 준다.
+
+```
+<a href="{% url 'posts:create' %}">New Post</a>
 ```
 
 - 여기까지 해서 이미지 업로드해보면 `No URL to redirect to.` 에러가 나오는데, 이거는 우리가 아직 Detail 페이지가 없기도 하고 redirect URL을 아직 지정 안해줘서 그렇다! 그러나 `/posts`로 가보면 이미지는 잘 업로드 되었다.
@@ -403,6 +414,17 @@ urlpatterns = [
     <img src="{{ post.image.url }}"></img>
     <p>{{ post.content }}</p>
 </div>
+```
+
+### posts/templates/posts/post_list.html
+
+- Post Detail 페이지로 편하게 가기 위하여 링크를 추가한다.
+- image를 클릭하면 Post로 가도록 하자.
+
+```
+<a href="{% url 'posts:detail' pk=post.pk %}">
+    <img src="{{ post.image.url }}"></img>
+</a>
 ```
 
 ### posts/models.py
@@ -450,6 +472,16 @@ urlpatterns = [
 ### posts/templates/posts/post_form.html
 
 - 수정할 것 없음!
+
+
+### posts/templates/posts/post_detail.html
+
+- 수정페이지로 가는 링크를 만든다.
+
+```
+<a href="{% url 'posts:update' pk=post.pk %}">Edit</a>
+```
+
 - 여기까지 작성하고 `/posts/2/edit/`로 들어가서 모든 것이 잘 동작하는지 확인해보자.
 - `models.py`에서 설정한 `ImageField`가 Image **Currently, Change**와 같이 현재 이미지 링크와 바꿀 이미지 폼을 함께 생성해 준다.
 
@@ -491,6 +523,14 @@ urlpatterns = [
 </form>
 ```
 
+### posts/templates/posts/post_detail.html
+
+- 삭제 페이지로 가는 링크를 만든다.
+
+```
+<a href="{% url 'posts:delete' pk=post.pk %}">Delete</a>
+```
+
 - 여기까지 작성하고 `/posts/2/delete/`로 들어가서 삭제가 잘 동작하는지 확인해보자.
 
 
@@ -501,6 +541,94 @@ urlpatterns = [
 ```bash
 git add .
 git commit -m "Add CRUD for Post"
+```
+
+### push
+
+```bash
+git push
+```
+
+
+## Image Resizing
+
+- `/posts` 페이지를 가보면 이미지가 원본 그대로 업로드 되어서 너무 크게 나온다.
+- `img` tag에서 width, height로 크기를 조정 해줄 수도 있지만, 용량 문제도 있고 하니 이미지 자체를 리사이징 해보자.
+
+### Package Install
+
+- django-imagekit 사용을 위하여 pilkit 사전 설치 필요. pillow 도 필요하지만 앞에서 이미 설치하였음.
+
+```bash
+pip install pilkit
+pip install django-imagekit
+```
+
+### imageupload/settings.py
+
+```python
+INSTALLED_APP = [
+		...
+		'imagekit',
+		...
+]
+```
+
+### posts/models.py
+
+```python
+from imagekit.models import ProcessedImageField
+from imagekit.processors import ResizeToFill
+
+
+class Post(models.Model):
+    image = ProcessedImageField(
+                upload_to='posts/images',                # 저장 위치
+                processors=[ResizeToFill(300, 300)],     # 처리할 작업 목록
+                format='JPEG',                           # 저장 포맷
+                options={'quality':90},                  # 옵션
+            )
+```
+
+- `models.py`를 수정했기 때문에 migration을 다시 해주자.
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+- 그리고 서버를 실행하고 이미지를 다시 업로드 해보자. 위에서 설정한 대로 업로드 되는 것을 확인 할 수 있다.
+- 주의할 점! 코드를 수정한 후 업로드 하는 사진에만 적용된다. 기존의 사진은 저 설정대로 변하지 않음! 사진을 업로드 하는 시점에 이미지를 변환하고 저장하기 때문!
+
+
+## Path of Uploaded Images
+
+- 위에서 간단하게 'posts/images' 처럼 고정적인 폴더에 이미지가 업로드 되도록 했는데, 이러면 하나의 폴더에 모든 이미지가 들어가서 보기 안 좋다.(파일 명이 겹치는 건 django에서 알아서 랜덤 문자열을 붙여 구분해준다.)
+- 그래서 이미지가 업로드 되는 위치를 깔끔하게 해서 보기 좋게 만들어 보자.
+
+```python
+def post_image_path(instance, filename):
+    return 'posts/{}/{}'.format(instance.pk, filename)
+
+
+class Post(models.Model):
+    image = ProcessedImageField(
+                upload_to=post_image_path,
+                ...
+            )
+```
+
+- `instance.pk` 이 부분은 처음 Post 작성시에는 pk가 없는 상태이기 때문에 `pk`가 `None`이라서 None 폴더에 모이게 됨. 수정할 때는 존재하는 Post라서 pk가 있기 때문에 해당 pk로 폴더가 생성되고 거기에 파일이 저장됨. > 그래서 이렇게는 작성을 잘 하지 않음. 보통 instance.user.pk 또는 instance.user.username 처럼 업로드 한 사람의 정보로 폴더를 구조화하는 경우가 많음.
+- 아까와는 다르게 column 자체가 수정된 것이 아니라, 속성만 변했기 때문에 migration을 안해도 된다.
+
+
+## Git Push Time #4
+
+### add & commit
+
+```bash
+git add .
+git commit -m "Add imagekit"
 ```
 
 ### push
