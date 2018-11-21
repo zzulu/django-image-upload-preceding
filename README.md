@@ -568,9 +568,9 @@ pip install django-imagekit
 
 ```python
 INSTALLED_APP = [
-		...
-		'imagekit',
-		...
+    ...
+    'imagekit',
+    ...
 ]
 ```
 
@@ -618,7 +618,8 @@ class Post(models.Model):
             )
 ```
 
-- `instance.pk` 이 부분은 처음 Post 작성시에는 pk가 없는 상태이기 때문에 `pk`가 `None`이라서 None 폴더에 모이게 됨. 수정할 때는 존재하는 Post라서 pk가 있기 때문에 해당 pk로 폴더가 생성되고 거기에 파일이 저장됨. > 그래서 이렇게는 작성을 잘 하지 않음. 보통 instance.user.pk 또는 instance.user.username 처럼 업로드 한 사람의 정보로 폴더를 구조화하는 경우가 많음.
+- `instance.pk` 이 부분은 처음 Post 작성시에는 pk가 없는 상태이기 때문에 `pk`가 `None`이라서 None 폴더에 모이게 됨. 수정할 때는 존재하는 Post라서 pk가 있기 때문에 해당 pk로 폴더가 생성되고 거기에 파일이 저장됨.
+- 그래서 이렇게는 작성을 잘 하지 않음. 보통 instance.user.pk 또는 instance.user.username 처럼 업로드 한 사람의 정보로 폴더를 구조화하는 경우가 많음.
 - 아까와는 다르게 column 자체가 수정된 것이 아니라, 속성만 변했기 때문에 migration을 안해도 된다.
 
 
@@ -629,6 +630,120 @@ class Post(models.Model):
 ```bash
 git add .
 git commit -m "Add imagekit"
+```
+
+### push
+
+```bash
+git push
+```
+
+## AWS S3
+
+### AWS 가입
+
+- 해외 결제 가능한 카드가 필요하다.(신용, 체크 상관 없음)
+- 카드 등록 시 결제되는 1달러는 카드가 유효한지 검사하는 가결제이므로 신용카드의 경우 실제로 청구되지 않고, 체크카드의 경우 곧 환불된다.
+
+### IAM 생성
+
+- S3FullAccess
+
+### S3 버킷 생성
+
+- 버킷 이름 기억하기
+- 지역: ap-northeast-2 (Seoul)
+
+### secrets.json
+
+- 외부에 공개되면 안 되는 key들을 모아놓는 파일. **GitHub에 올라가서는 안되는 파일.** (C9은 Workspace의 주소만 알면 들어와서 파일을 볼 수 있기 때문에 private로 생성한 것.)
+- `settings.py`에 있는 `SECRET_KEY`도 배포된 서비스에서 사용중이라면 노출되어서는 안됨. 또는 개발 환경과 실제 서비스 환경 에서 다른 key를 사용.
+- `settings.py`에 있는 `SECRET_KEY`도 `secrets.json`으로 옮기자.
+
+```json
+{
+    "SECRET_KEY":"...",
+    "AWS_ACCESS_KEY_ID":"...",
+    "AWS_SECRET_ACCESS_KEY":"..."
+}
+```
+
+- json 파일은 python의 dict와 다르기 때문에 마지막에 `,`가 없어야 한다. 주의!
+
+
+### gitignore
+
+- **`.gitignore` 파일에 `secrets.json` 파일 추가.**
+
+
+### django-storage 설치
+
+- AWS 서비스들을 python 코드로 사용하게 해주는 라이브러리 `boto3`
+
+```bash
+pip install boto3
+pip install django-storages
+```
+
+### imageupload/settings.py
+
+- 설치한 `django-storages`를 사용하기 위하여 설정.
+
+```python
+INSTALLED_APPS = [
+    ...
+    'storages',
+    ...
+]
+```
+
+- `secrets.json`에 있는 key들을 사용하기 위하여 로드.
+
+```python
+import json
+from django.core.exceptions import ImproperlyConfigured
+
+with open(os.path.join(BASE_DIR, 'secrets.json'), 'r') as f:
+    secrets = json.loads(f.read())
+
+def get_secret(setting, secrets=secrets):
+    try:
+        return secrets[setting]
+    except KeyError:
+        error_message = "Set the key '{}' in secrets.json file.".format(setting)
+        raise ImproperlyConfigured(error_message)
+        
+SECRET_KEY = get_secret("SECRET_KEY")
+```
+
+- AWS S3 설정!
+
+
+```python
+# AWS S3 Upload
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_ACCESS_KEY_ID = get_secret('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = get_secret('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = '버킷 이름'
+AWS_S3_REGION_NAME = 'ap-northeast-2'
+AWS_DEFAULT_ACL = None
+```
+
+- 여기까지 설정하고 서버 재시작 후 이미지를 다시 업로드 해본다.
+- 서버를 뒤져보아도 업로드 된 파일이 없다. 서버에 업로드 된게 아니라 S3에 업로드 되었기 때문에.
+- inspector로 이미지를 요소 검사 해보면 AWS S3 주소로부터 이미지가 오는 것을 볼 수 있다.
+- 기존의 이미지는 전부 나오지 않는다. 이미지가 저장되는 위치 자체가 바뀌었기 때문에.
+
+
+## Git Push Time #5
+
+- commit 하기 전에 `secrets.json`가 포함되지 않았는지 다시 한번 확인하자. **commit에 포함되면 절대 안된다.**
+
+### add & commit
+
+```bash
+git add .
+git commit -m "Change media storage location to S3"
 ```
 
 ### push

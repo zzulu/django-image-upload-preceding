@@ -116,3 +116,6 @@ dmypy.json
 
 # media
 media
+
+# secrets
+secrets.json
