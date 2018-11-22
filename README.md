@@ -63,6 +63,17 @@ pip install django
 django-admin startproject imageupload .
 ```
 
+### settings.py
+
+- `ALLOWED_HOSTS`에 C9 HOST 등록.
+- 우측 상단에 `Share > Application > 주소 클릭 > Copy` 하여 붙여 넣기.
+- 붙여 넣을 때, `https://`는 빼고 넣는다.
+```python
+ALLOWED_HOSTS = [
+    'django-image-upload-capollux.c9users.io'
+]
+```
+
 서버 실행 한번 해보고 갑시다.
 
 ```bash
@@ -81,15 +92,6 @@ django-admin startapp posts
 ```
 
 ### settings.py
-
-- `ALLOWED_HOSTS`에 C9 HOST 등록.
-- 우측 상단에 `Share > Application > 주소 클릭 > Copy` 하여 붙여 넣기.
-- 붙여 넣을 때, `https://`는 빼고 넣는다.
-```python
-ALLOWED_HOSTS = [
-    'django-image-upload-capollux.c9users.io'
-]
-```
 
 - `INSTALLED_APPS` 에 방금 생성한 App 추가.
 - 제일 앞쪽에 추가. 다른 모듈들보다 우선적으로 로드되기 위하여.
@@ -151,7 +153,6 @@ git commit -m "Init commit"
 ```bash
 git push -u origin master
 ```
-
 
 ## Model 생성 및 Admin 설정
 
@@ -259,7 +260,6 @@ urlpatterns = [
 
 ### posts/templates/posts/post_list.html
 
-
 ```
 <h1>Post List</h1>
 
@@ -329,7 +329,6 @@ git commit -m "Add basic image uplaod"
 ```bash
 git push
 ```
-
 
 ## [C]RUD
 
